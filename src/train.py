@@ -95,7 +95,7 @@ def run_training():
         logging_steps=50,
         report_to="none",
         dataloader_num_workers=0,   # Windows fix
-        no_cuda=True                # CPU only
+        use_cpu=True               # CPU only
     )
 
     # ── Train ─────────────────────────────────────────────────────
