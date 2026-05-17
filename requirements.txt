@@ -8,3 +8,7 @@ pandas==2.2.0
 scikit-learn==1.4.2
 evaluate==0.4.1
 mlflow==2.13.0
+langchain==0.2.0
+langchain-community==0.2.0
+chromadb==0.5.0
+sentence-transformers==3.0.0
