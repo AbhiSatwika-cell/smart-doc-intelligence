@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  smart-doc-api:
+    build: .
+    container_name: smart-doc-intelligence
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data        # mount data so container uses your docs
+      - ./models:/app/models    # mount models so no retraining needed
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
