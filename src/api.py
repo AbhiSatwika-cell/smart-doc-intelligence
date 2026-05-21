@@ -1,3 +1,5 @@
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+import tempfile, shutil
 import os
 import sys
 import time
@@ -8,6 +10,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 import uvicorn
@@ -22,6 +26,9 @@ app = FastAPI(
     description="RAG-powered document QA with NLP classification",
     version="1.0.0"
 )
+@app.get("/")
+async def serve_frontend():
+    return FileResponse("index.html")
 
 # ── Global state ──────────────────────────────────────────────────────
 retriever      = None
@@ -254,6 +261,92 @@ async def model_info():
         "rag_vector_store":   "ChromaDB",
         "deployment_type":    "CPU inference",
     }
+
+# ── Endpoint 5: File upload → add to RAG ─────────────────────────
+@app.post("/upload")
+async def upload_document(file: UploadFile = File(...)):
+    """
+    Upload a PDF or TXT file and add it to the RAG vector store.
+    JD keywords: data pipelines, data ingestion, scalable AI systems,
+                 end-to-end ML lifecycle, dynamic data management
+    """
+    global retriever
+
+    # Validate file type
+    allowed = [".pdf", ".txt", ".md"]
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type {ext} not supported. Use PDF, TXT, or MD."
+        )
+
+    # Validate file size (max 10MB)
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Max 10MB.")
+
+    try:
+        from langchain_community.document_loaders import PyPDFLoader, TextLoader
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from langchain_community.vectorstores import Chroma
+
+        # Save to temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+
+        # Load document
+        if ext == ".pdf":
+            loader = PyPDFLoader(tmp_path)
+        else:
+            loader = TextLoader(tmp_path, encoding="utf-8")
+
+        docs = loader.load()
+
+        # Add filename as metadata
+        for doc in docs:
+            doc.metadata["source"] = file.filename
+
+        # Chunk
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=300, chunk_overlap=50
+        )
+        chunks = splitter.split_documents(docs)
+
+        # Embed and add to existing ChromaDB
+        embeddings = HuggingFaceEmbeddings(
+            model_name=EMBED_MODEL,
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={"normalize_embeddings": True}
+        )
+
+        vectorstore = Chroma(
+            persist_directory=CHROMA_DIR,
+            embedding_function=embeddings
+        )
+        vectorstore.add_documents(chunks)
+
+        # Reload retriever with updated store
+        retriever = vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 3}
+        )
+
+        # Clean up temp file
+        os.unlink(tmp_path)
+
+        return {
+            "filename": file.filename,
+            "chunks_added": len(chunks),
+            "pages": len(docs),
+            "status": "success",
+            "message": f"Added {len(chunks)} chunks from '{file.filename}' to knowledge base. You can now ask questions about it."
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 # ── Run server ────────────────────────────────────────────────────────
