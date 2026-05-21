@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from typing import Optional
 import uvicorn
 
-CHROMA_DIR  = "data/chroma_db"
+CHROMA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "chroma_db")
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 # ── App setup ─────────────────────────────────────────────────────────
