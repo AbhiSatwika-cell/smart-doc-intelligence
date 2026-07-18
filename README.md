@@ -5,11 +5,11 @@ An end-to-end AI/ML project covering the full machine learning lifecycle.
 ## Components
 - Data pipeline: ingestion, cleaning, labeling, feature engineering
 - NLP model: DistilBERT fine-tuned for document classification
-- Experiment tracking: MLflow (Day 3-4)
-- LLM + RAG: LangChain (Day 5-6)
-- REST API: FastAPI (Day 7-8)
-- Deployment: Docker (Day 7-8)
-- CI/CD: GitHub Actions (Day 9-10)
+- Experiment tracking: MLflow 
+- LLM + RAG: LangChain 
+- REST API: FastAPI 
+- Deployment: Docker 
+- CI/CD: GitHub Actions 
 
 ## Tech Stack
 Python, Hugging Face Transformers, PyTorch, scikit-learn,
